@@ -73,6 +73,63 @@
 
 # 5. 标准工作顺序
 
+## 5.0 分支与 PR 工作流（强制）
+
+**所有代码变更必须通过 PR 合并，禁止直接推送到 main 分支。**
+
+### Phase 开发流程
+
+```text
+1. 从 main 创建分支：git checkout -b phase/N-description
+2. 按任务拆解进行开发，每个子任务可独立提交
+3. 开发完成后，确保本地测试通过
+4. 推送分支：git push -u origin phase/N-description
+5. 创建 PR，标题格式：Phase N: 简短描述
+6. PR 描述中关联执行计划 EP
+7. 等待 CI 通过后合并
+8. 合并后删除分支
+```
+
+### Bug 修复流程
+
+```text
+1. 从 main 创建分支：git checkout -b fix/issue-N-description
+2. 编写修复代码与测试
+3. 推送分支：git push -u origin fix/issue-N-description
+4. 创建 PR，标题格式：fix: 简短描述
+5. PR 描述中说明问题原因与修复方案
+6. 等待 CI 通过后合并
+```
+
+### 分支命名规范
+
+| 类型 | 格式 | 示例 |
+|---|---|---|
+| Phase 开发 | `phase/N-description` | `phase/1-community-mvp` |
+| Bug 修复 | `fix/issue-N-description` | `fix/issue-42-login-error` |
+| 功能开发 | `feat/description` | `feat/user-profile` |
+| 重构 | `refactor/description` | `refactor/auth-module` |
+| 文档 | `docs/description` | `docs/api-guide` |
+
+### PR 标题规范
+
+```text
+Phase N: 描述          # Phase 开发
+fix: 描述              # Bug 修复
+feat: 描述             # 新功能
+refactor: 描述         # 重构
+docs: 描述             # 文档更新
+```
+
+### PR 合并条件
+
+- [ ] CI 检查通过（lint / typecheck / test / build）
+- [ ] 至少 1 人 Review 通过（个人项目可自审）
+- [ ] 无未解决的讨论
+- [ ] 关联的 EP 状态已更新
+
+---
+
 ## 5.1 开发新功能
 
 ```text
@@ -292,14 +349,14 @@ app/page -> features -> components/domain -> components/common -> components/ui
 ```
 
 允许类型：
-- `feat`
-- `fix`
-- `refactor`
-- `docs`
-- `test`
-- `chore`
-- `perf`
-- `ci`
+- `feat` — 新功能
+- `fix` — Bug 修复
+- `refactor` — 重构（不改变功能）
+- `docs` — 文档更新
+- `test` — 测试相关
+- `chore` — 构建、工具、依赖
+- `perf` — 性能优化
+- `ci` — CI/CD 配置
 
 ## PR 最低要求
 
@@ -311,6 +368,24 @@ PR 描述中应说明：
 4. 是否涉及 DB / API / 权限 / 支付 / AI
 5. 是否更新文档
 6. 如何验证
+
+## PR 工作流总览
+
+```text
+main (受保护)
+  │
+  ├── phase/1-community-mvp     → PR → 合并 → 删除分支
+  ├── phase/2-ai-features       → PR → 合并 → 删除分支
+  ├── fix/issue-42-login-error  → PR → 合并 → 删除分支
+  └── feat/user-profile         → PR → 合并 → 删除分支
+```
+
+**强制规则：**
+- ❌ 禁止直接推送到 main 分支
+- ✅ 所有变更必须通过 PR
+- ✅ 每个 Phase 完成后必须创建 PR
+- ✅ 每个 Bug 修复必须创建 PR
+- ✅ 合并后删除功能分支
 
 ---
 
