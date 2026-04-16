@@ -1,0 +1,17 @@
+{
+  "name": "@ai-anime/tooling",
+  "version": "0.1.0",
+  "description": "Repo lint, structure checks, and doc tools",
+  "bin": {
+    "repo-lint": "./dist/repo-lint.js",
+    "structure-check": "./dist/structure-check.js"
+  },
+  "scripts": {
+    "build": "tsup src/*.ts --format cjs,esm --dts",
+    "dev": "tsup src/*.ts --format cjs,esm --dts --watch"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0"
+  }
+}

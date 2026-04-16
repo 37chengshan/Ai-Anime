@@ -1,0 +1,30 @@
+# AI 动漫社区 CODEOWNERS
+
+# Default owners
+* @ai-anime/core
+
+# Frontend
+apps/web/ @ai-anime/frontend
+packages/ui/ @ai-anime/frontend
+
+# Backend
+apps/api/ @ai-anime/backend
+apps/worker/ @ai-anime/backend
+
+# Database
+apps/api/alembic/ @ai-anime/backend
+docs/db/ @ai-anime/backend
+
+# AI
+apps/api/app/ai/ @ai-anime/ai
+packages/prompts/ @ai-anime/ai
+
+# Documentation
+docs/ @ai-anime/core
+AGENTS.md @ai-anime/core
+ARCHITECTURE.md @ai-anime/core
+README.md @ai-anime/core
+
+# Infrastructure
+infra/ @ai-anime/infra
+.github/ @ai-anime/infra

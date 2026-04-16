@@ -1,0 +1,54 @@
+name: DB Check
+
+on:
+  push:
+    paths: ['apps/api/app/models/**', 'apps/api/alembic/**']
+  pull_request:
+    paths: ['apps/api/app/models/**', 'apps/api/alembic/**']
+
+jobs:
+  migration-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check migration order
+        run: |
+          # Check migration files follow naming convention
+          migrations=$(ls apps/api/alembic/versions/*.py 2>/dev/null || true)
+
+          for migration in $migrations; do
+            filename=$(basename "$migration")
+            if [[ ! "$filename" =~ ^[0-9]+_.*\.py$ ]]; then
+              echo "Error: Migration file must start with number: $filename"
+              exit 1
+            fi
+          done
+
+          echo "Migration naming check passed"
+
+  schema-sync:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ai_anime_test
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          cd apps/api
+          pip install poetry
+          poetry install
+      - name: Check models and migrations sync
+        run: |
+          cd apps/api
+          # This would run alembic check if we had the full setup
+          echo "Schema sync check placeholder"

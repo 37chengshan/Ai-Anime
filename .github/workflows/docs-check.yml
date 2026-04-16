@@ -1,0 +1,38 @@
+name: Docs Check
+
+on:
+  push:
+    paths: ['docs/**', 'AGENTS.md', 'ARCHITECTURE.md', 'README.md']
+  pull_request:
+    paths: ['docs/**', 'AGENTS.md', 'ARCHITECTURE.md', 'README.md']
+
+jobs:
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for dead links
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: '--verbose --no-progress docs/**/*.md AGENTS.md ARCHITECTURE.md README.md'
+
+  index-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check index files exist
+        run: |
+          required_indexes=(
+            "docs/design-docs/index.md"
+            "docs/product-specs/index.md"
+            "docs/api/api-index.md"
+          )
+
+          for index in "${required_indexes[@]}"; do
+            if [[ ! -f "$index" ]]; then
+              echo "Error: Required index file missing: $index"
+              exit 1
+            fi
+          done
+
+          echo "All required index files exist"

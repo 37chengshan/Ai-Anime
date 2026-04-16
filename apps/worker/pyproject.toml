@@ -1,0 +1,17 @@
+[project]
+name = "ai-anime-worker"
+version = "0.1.0"
+description = "AI 动漫社区 Celery Worker"
+requires-python = ">=3.11"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+celery = "^5.3.0"
+redis = "^5.0.0"
+pillow = "^10.0.0"
+openai = "^1.0.0"
+sentry-sdk = "^1.40.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

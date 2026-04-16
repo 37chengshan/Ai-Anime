@@ -1,0 +1,58 @@
+name: PR Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  pr-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title format
+        run: |
+          title="${{ github.event.pull_request.title }}"
+          if [[ ! "$title" =~ ^(feat|fix|refactor|docs|test|chore|perf|ci): ]]; then
+            echo "PR title must start with one of: feat, fix, refactor, docs, test, chore, perf, ci"
+            echo "Example: feat: add user authentication"
+            exit 1
+          fi
+
+  docs-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check docs updates
+        run: |
+          # Check if PR touches architecture/API/DB
+          changed_files=$(git diff --name-only origin/main...HEAD)
+          docs_changed=$(echo "$changed_files" | grep -c 'docs/')
+
+          code_changed=$(echo "$changed_files" | grep -cE '(app/routers|app/models|app/schemas)')
+
+          if [[ $code_changed -gt 0 && $docs_changed -eq 0 ]]; then
+            echo "Warning: Code changes detected but no docs updates"
+            echo "Please update docs/api/, docs/db/, or docs/adr/ if needed"
+          fi
+
+  structure-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check directory boundaries
+        run: |
+          changed_files=$(git diff --name-only origin/main...HEAD)
+
+          # Check if files are placed correctly
+          for file in $changed_files; do
+            # Frontend components should not be in apps/api
+            if [[ "$file" =~ ^apps/api.*\.tsx$ ]]; then
+              echo "Error: TypeScript React files should not be in apps/api"
+              exit 1
+            fi
+
+            # Backend Python files should not be in apps/web
+            if [[ "$file" =~ ^apps/web.*\.py$ ]]; then
+              echo "Error: Python files should not be in apps/web"
+              exit 1
+            fi
+          done
