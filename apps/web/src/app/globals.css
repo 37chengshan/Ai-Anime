@@ -155,3 +155,15 @@ input:focus, textarea:focus, select:focus {
 button {
   border-radius: 0 !important;
 }
+
+/* Clerk authentication components - Editorial styling */
+.clerk-auth-container {
+  padding: 2rem;
+}
+
+/* Override Clerk's default rounded corners globally */
+[data-clerk-root] *,
+[data-clerk-root] *::before,
+[data-clerk-root] *::after {
+  border-radius: 0 !important;
+}

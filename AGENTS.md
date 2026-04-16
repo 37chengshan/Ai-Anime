@@ -99,7 +99,30 @@ cd apps/api && alembic upgrade head  # 数据库迁移
 
 ---
 
-# 8. 相关文档索引
+# 8. AI 代理技能选择规则
+
+## 禁止使用 GSD 工作流技能
+
+以下 GSD 工作流技能**禁止调用**，会增加不必要的流程开销：
+
+`gsd-plan-phase`、`gsd-execute-phase`、`gsd-new-project`、`gsd-new-milestone`、`gsd-ai-integration-phase`、`gsd-ui-phase`、`gsd-secure-phase`、`gsd-code-review`、`gsd-code-review-fix`、`gsd-debug`、`gsd-docs-update` 等带编排流程的 gsd-* 技能
+
+## 允许使用的 GSD 资源
+
+- **GSD 代理模板**（subagent_type 中的 gsd-* agent 类型）— 如 gsd-researcher、gsd-planner 等
+- **GSD 基础设施**（workspace、milestone 等数据结构）
+
+## 推荐的功能性技能
+
+| 场景 | 推荐技能 |
+|------|---------|
+| Phase 执行前 | frontend-design、smart-web-fetch、tdd-workflow 等 |
+| Bug 修复前 | systematic-debugging、verification-loop 等 |
+| 文档编写 | 直接用 Write/Edit 工具 |
+
+---
+
+# 9. 相关文档索引
 
 - [架构决策记录](docs/adr/)
 - [API 索引](docs/api/api-index.md)

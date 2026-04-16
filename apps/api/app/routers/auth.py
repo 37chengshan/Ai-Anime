@@ -1,8 +1,15 @@
 # Auth Router
 # 认证相关 API
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Header
 from pydantic import BaseModel
+from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.db import get_db
+from app.services.user import UserService
+from app.utils.auth import verify_clerk_webhook, extract_clerk_user_data
+from app.schemas.common import ErrorResponse
 
 router = APIRouter()
 
@@ -14,8 +21,24 @@ class ClerkWebhookPayload(BaseModel):
     type: str
 
 
-@router.post("/webhook")
-async def clerk_webhook(payload: ClerkWebhookPayload):
+@router.post(
+    "/webhook",
+    summary="Clerk Webhook 接收端点",
+    description="接收 Clerk 用户事件并同步到本地数据库",
+    responses={
+        200: {"description": "Webhook 处理成功"},
+        400: {"model": ErrorResponse, "description": "无效请求"},
+        401: {"model": ErrorResponse, "description": "签名验证失败"},
+    },
+)
+async def clerk_webhook(
+    payload: ClerkWebhookPayload,
+    request: Request,
+    svix_id: Optional[str] = Header(None, alias="svix-id"),
+    svix_timestamp: Optional[str] = Header(None, alias="svix-timestamp"),
+    svix_signature: Optional[str] = Header(None, alias="svix-signature"),
+    db: AsyncSession = Depends(get_db),
+):
     """
     处理 Clerk Webhook 事件
 
@@ -24,18 +47,48 @@ async def clerk_webhook(payload: ClerkWebhookPayload):
     - user.updated: 更新用户
     - user.deleted: 删除用户
     """
-    # TODO: 实现用户数据同步
-    # 1. 验证 webhook 签名
-    # 2. 根据事件类型处理
-    # 3. 同步到本地数据库
-    return {"status": "received", "type": payload.type}
-
-
-@router.get("/me")
-async def get_current_user():
-    """获取当前登录用户信息"""
-    # TODO: 从 Clerk session 获取用户
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Not implemented"
+    # 验证 webhook 签名
+    is_valid = await verify_clerk_webhook(
+        request,
+        svix_id=svix_id,
+        svix_timestamp=svix_timestamp,
+        svix_signature=svix_signature,
     )
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook signature",
+        )
+
+    # 只处理用户事件
+    if not payload.type.startswith("user."):
+        return {"status": "ignored", "type": payload.type}
+
+    # 提取用户数据
+    user_data = extract_clerk_user_data(payload.data)
+    clerk_user_id = user_data["clerk_user_id"]
+    email = user_data["email"]
+    username = user_data["username"]
+
+    # 同步用户
+    user_service = UserService(db)
+    try:
+        user = await user_service.sync_from_clerk(
+            clerk_user_id=clerk_user_id,
+            email=email,
+            username=username,
+            event_type=payload.type,
+        )
+        await db.commit()
+
+        return {
+            "status": "success",
+            "type": payload.type,
+            "user_id": str(user.id) if user else None,
+        }
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to sync user: {str(e)}",
+        )

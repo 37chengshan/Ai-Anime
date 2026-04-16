@@ -39,6 +39,8 @@ app.add_middleware(
 from app.routers import (
     auth_router,
     users_router,
+    me_router,
+    creator_router,
     posts_router,
     comments_router,
     uploads_router,
@@ -47,7 +49,9 @@ from app.routers import (
 )
 
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(me_router, prefix="/api/v1", tags=["me"])
 app.include_router(users_router, prefix="/api/v1/users", tags=["users"])
+app.include_router(creator_router, prefix="/api/v1/creators", tags=["creators"])
 app.include_router(posts_router, prefix="/api/v1/posts", tags=["posts"])
 app.include_router(comments_router, prefix="/api/v1", tags=["comments"])
 app.include_router(uploads_router, prefix="/api/v1/uploads", tags=["uploads"])
