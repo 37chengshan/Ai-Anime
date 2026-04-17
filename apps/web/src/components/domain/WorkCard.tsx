@@ -4,7 +4,7 @@ import React from "react";
 import { Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { toast } from "sonner";
 
 // Types - should be moved to @/types when available
@@ -92,7 +92,7 @@ export function WorkCard({ work }: { work: Work }) {
       whileHover={{ y: -2 }}
       className="group relative flex flex-col bg-transparent overflow-hidden transition-all duration-300 border border-[#1a1918]/10 hover:border-[#1a1918]/30"
     >
-      <Link href={`/work/${work.id}`} className="relative aspect-auto overflow-hidden bg-[#1a1918]/5">
+      <Link href={`/post/${work.id}`} className="relative aspect-auto overflow-hidden bg-[#1a1918]/5">
         <img
           src={work.images[0]}
           alt={work.title}
@@ -146,7 +146,7 @@ export function WorkCard({ work }: { work: Work }) {
 
           <h3 className="editorial-title text-xl leading-tight truncate">
             <Link
-              href={`/work/${work.id}`}
+              href={`/post/${work.id}`}
               className="hover:text-[#c44d36] transition-colors decoration-1 underline-offset-4 group-hover:underline"
             >
               {work.title}
@@ -155,7 +155,7 @@ export function WorkCard({ work }: { work: Work }) {
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t border-[#1a1918]/10">
-          <Link href={`/profile/${work.author.id}`} className="flex items-center gap-3 group/author">
+          <Link href={`/creator/${work.author.id}`} className="flex items-center gap-3 group/author">
             <img
               src={work.author.avatar}
               alt={work.author.nickname}

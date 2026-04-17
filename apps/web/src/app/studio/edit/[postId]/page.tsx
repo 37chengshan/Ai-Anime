@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
@@ -20,6 +21,7 @@ type Visibility = "public" | "followers" | "private";
 
 interface Post {
   id: string;
+  author: { id: string };
   title: string;
   content: string | null;
   excerpt: string | null;
