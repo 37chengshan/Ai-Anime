@@ -1,55 +1,139 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { MoreHorizontal, Heart, Sparkles } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 import { clsx } from "clsx";
 import { toast } from "sonner";
 
-// Types - should be moved to @/types when available
-interface Author {
+// Types based on API response
+interface CommentAuthor {
   id: string;
-  nickname: string;
-  avatar: string;
-  isMember?: boolean;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
 }
 
 interface Comment {
   id: string;
-  workId: string;
-  author: Author;
+  post_id: string;
+  author: CommentAuthor;
+  parent_comment_id: string | null;
   content: string;
-  createdAt: string;
-  likes: number;
+  status: string;
+  ai_assisted: boolean;
+  like_count: number;
+  is_liked: boolean;
+  is_own: boolean;
+  replies: Comment[];
+  created_at: string;
+  updated_at: string;
 }
 
-// Mock current user - should be moved to a proper auth context
-const CURRENT_USER: Author = {
-  id: "user_1",
-  nickname: "Current User",
-  avatar: "/avatars/default.jpg",
-};
+interface CommentSectionProps {
+  postId: string;
+  initialComments?: Comment[];
+}
 
-export function CommentSection({ comments: initialComments }: { comments: Comment[] }) {
-  const [comments, setComments] = useState(initialComments);
+export function CommentSection({ postId, initialComments }: CommentSectionProps) {
+  const { user, isLoaded: isUserLoaded } = useUser();
+  const [comments, setComments] = useState<Comment[]>(initialComments || []);
   const [input, setInput] = useState("");
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(!initialComments);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Fetch comments from API
+  useEffect(() => {
+    if (!initialComments) {
+      fetchComments();
+    }
+  }, [postId]);
+
+  const fetchComments = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/v1/posts/${postId}/comments?limit=100`);
+      if (!response.ok) throw new Error("Failed to fetch comments");
+      const data = await response.json();
+      setComments(data.items || []);
+    } catch (error) {
+      toast.error("Failed to load comments");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || !user) return;
 
-    const newComment: Comment = {
-      id: `c_${Date.now()}`,
-      workId: "w_1",
-      author: CURRENT_USER,
-      content: input,
-      createdAt: new Date().toISOString(),
-      likes: 0,
-    };
+    try {
+      const response = await fetch(`/api/v1/posts/${postId}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: input,
+          post_id: postId,
+          ai_assisted: false,
+        }),
+      });
 
-    setComments([newComment, ...comments]);
-    setInput("");
-    toast.success("Critique submitted for review.");
+      if (!response.ok) throw new Error("Failed to create comment");
+
+      const newComment = await response.json();
+      setComments([newComment, ...comments]);
+      setInput("");
+      toast.success("Critique submitted for review.");
+    } catch (error) {
+      toast.error("Failed to submit critique");
+    }
+  };
+
+  const handleDelete = async (commentId: string) => {
+    try {
+      const response = await fetch(`/api/v1/comments/${commentId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete comment");
+
+      setComments(comments.filter((c) => c.id !== commentId));
+      toast.success("Critique removed.");
+    } catch (error) {
+      toast.error("Failed to remove critique");
+    }
+  };
+
+  const handleLike = async (comment: Comment) => {
+    if (!user) return;
+
+    const isLiked = comment.is_liked;
+    const newCount = isLiked ? comment.like_count - 1 : comment.like_count + 1;
+
+    // Optimistic update
+    setComments(
+      comments.map((c) =>
+        c.id === comment.id ? { ...c, is_liked: !isLiked, like_count: newCount } : c
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/v1/comments/${comment.id}/like`, {
+        method: isLiked ? "DELETE" : "POST",
+      });
+
+      if (!response.ok) throw new Error("Failed to update like");
+    } catch (error) {
+      // Revert on error
+      setComments(
+        comments.map((c) =>
+          c.id === comment.id ? { ...c, is_liked: isLiked, like_count: comment.like_count } : c
+        )
+      );
+      toast.error("Failed to update like");
+    }
   };
 
   const aiSuggestions = [
@@ -68,11 +152,15 @@ export function CommentSection({ comments: initialComments }: { comments: Commen
       </div>
 
       <div className="flex flex-col md:flex-row gap-6 mb-16 border-b border-[#1a1918]/20 pb-16">
-        <img
-          src={CURRENT_USER.avatar}
-          alt="Avatar"
-          className="w-12 h-12 object-cover shrink-0 filter grayscale border border-[#1a1918] p-0.5 bg-[#fdfaf6] hidden md:block"
-        />
+        {isUserLoaded && user ? (
+          <img
+            src={user.imageUrl || "/avatars/default.jpg"}
+            alt="Avatar"
+            className="w-12 h-12 object-cover shrink-0 filter grayscale border border-[#1a1918] p-0.5 bg-[#fdfaf6] hidden md:block"
+          />
+        ) : (
+          <div className="w-12 h-12 shrink-0 border border-[#1a1918]/20 bg-[#1a1918]/5 hidden md:block" />
+        )}
         <div className="flex-1 w-full">
           <form onSubmit={handleSubmit} className="relative">
             <textarea
@@ -98,7 +186,7 @@ export function CommentSection({ comments: initialComments }: { comments: Commen
 
               <button
                 type="submit"
-                disabled={!input.trim()}
+                disabled={!input.trim() || !user}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-[#1a1918] text-[#fdfaf6] disabled:bg-[#1a1918]/10 disabled:text-[#1a1918]/30 editorial-caption font-bold tracking-[0.1em] border border-transparent disabled:border-[#1a1918]/10 transition-colors hover:bg-[#c44d36]"
               >
                 SUBMIT CRITIQUE
@@ -133,51 +221,66 @@ export function CommentSection({ comments: initialComments }: { comments: Commen
         </div>
       </div>
 
-      <div className="space-y-12">
-        {comments.map((comment) => (
-          <div key={comment.id} className="flex flex-col md:flex-row gap-6">
-            <img
-              src={comment.author.avatar}
-              alt={comment.author.nickname}
-              className="w-12 h-12 object-cover shrink-0 filter grayscale border border-[#1a1918]/20 p-0.5 bg-[#fdfaf6] hidden md:block"
-            />
-            <div className="flex-1 border-l-2 border-[#1a1918]/10 pl-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-3">
-                    <span className="editorial-title text-xl text-[#1a1918]">
-                      {comment.author.nickname}
-                    </span>
-                    {comment.author.isMember && (
-                      <span className="bg-[#c44d36] text-[#fdfaf6] text-[9px] font-black px-2 py-0.5 uppercase tracking-widest">
-                        PRO
+      {isLoading ? (
+        <div className="text-center py-12">
+          <span className="editorial-caption text-[#4a4845]">Loading discourse...</span>
+        </div>
+      ) : (
+        <div className="space-y-12">
+          {comments.map((comment) => (
+            <div key={comment.id} className="flex flex-col md:flex-row gap-6">
+              <img
+                src={comment.author.avatar_url || "/avatars/default.jpg"}
+                alt={comment.author.display_name || comment.author.username}
+                className="w-12 h-12 object-cover shrink-0 filter grayscale border border-[#1a1918]/20 p-0.5 bg-[#fdfaf6] hidden md:block"
+              />
+              <div className="flex-1 border-l-2 border-[#1a1918]/10 pl-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-3">
+                      <span className="editorial-title text-xl text-[#1a1918]">
+                        {comment.author.display_name || comment.author.username}
                       </span>
-                    )}
+                    </div>
+                    <span className="editorial-caption text-[10px] text-[#4a4845]">
+                      {new Date(comment.created_at).toLocaleDateString("en-US", {
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
                   </div>
-                  <span className="editorial-caption text-[10px] text-[#4a4845]">
-                    VOL. 4 / RECENT
-                  </span>
+                  {comment.is_own && (
+                    <button
+                      onClick={() => handleDelete(comment.id)}
+                      className="text-[#1a1918]/40 hover:text-[#1a1918] transition-colors"
+                    >
+                      <MoreHorizontal className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
-                <button className="text-[#1a1918]/40 hover:text-[#1a1918] transition-colors">
-                  <MoreHorizontal className="w-5 h-5" />
-                </button>
-              </div>
-              <p className="font-serif text-lg leading-relaxed text-[#1a1918] mb-6">
-                {comment.content}
-              </p>
-              <div className="flex items-center gap-6 editorial-caption font-bold">
-                <button className="flex items-center gap-2 text-[#4a4845] hover:text-[#c44d36] transition-colors group">
-                  <Heart className="w-3.5 h-3.5 group-hover:fill-current" />
-                  {comment.likes}
-                </button>
-                <button className="text-[#4a4845] hover:text-[#1a1918] transition-colors border-b border-transparent hover:border-[#1a1918]">
-                  REPLY
-                </button>
+                <p className="font-serif text-lg leading-relaxed text-[#1a1918] mb-6">
+                  {comment.content}
+                </p>
+                <div className="flex items-center gap-6 editorial-caption font-bold">
+                  <button
+                    onClick={() => handleLike(comment)}
+                    className={clsx(
+                      "flex items-center gap-2 transition-colors",
+                      comment.is_liked ? "text-[#c44d36]" : "text-[#4a4845] hover:text-[#c44d36]"
+                    )}
+                  >
+                    <Heart className={clsx("w-3.5 h-3.5", comment.is_liked && "fill-current")} />
+                    {comment.like_count}
+                  </button>
+                  <button className="text-[#4a4845] hover:text-[#1a1918] transition-colors border-b border-transparent hover:border-[#1a1918]">
+                    REPLY
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
