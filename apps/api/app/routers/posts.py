@@ -42,6 +42,7 @@ async def list_posts(
     sort: str = Query(default="latest", pattern="^(latest|popular|trending)$"),
     search: Optional[str] = None,
     following: bool = Query(default=False),
+    admin_mode: bool = Query(default=False, description="管理员模式：包含 flagged 内容"),
     db: AsyncSession = Depends(get_db),
     current_clerk_id: Optional[str] = Depends(get_optional_user_id),
 ):
@@ -54,6 +55,7 @@ async def list_posts(
     - sort: 排序方式 (latest / popular / trending)
     - search: 搜索关键词 (匹配 title 和 excerpt)
     - following: 是否只显示关注用户的作品
+    - admin_mode: 管理员模式，True 时返回 flagged 内容（Phase 4）
     """
     post_service = PostService(db)
 
