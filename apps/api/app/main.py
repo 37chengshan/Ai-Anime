@@ -46,6 +46,7 @@ from app.routers import (
     uploads_router,
     ai_router,
     subscriptions_router,
+    tags_router,
 )
 
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
@@ -57,6 +58,7 @@ app.include_router(comments_router, prefix="/api/v1", tags=["comments"])
 app.include_router(uploads_router, prefix="/api/v1/uploads", tags=["uploads"])
 app.include_router(ai_router, prefix="/api/v1/ai", tags=["ai"])
 app.include_router(subscriptions_router, prefix="/api/v1/subscriptions", tags=["subscriptions"])
+app.include_router(tags_router, prefix="/api/v1/tags", tags=["tags"])
 
 
 @app.get("/health")

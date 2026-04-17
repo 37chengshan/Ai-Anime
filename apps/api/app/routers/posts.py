@@ -3,21 +3,22 @@
 
 import re
 from datetime import datetime, timezone
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, and_, delete
 from sqlalchemy.orm import selectinload
 from typing import Optional, List
-from uuid import UUID
 
 from app.core.db import get_db
-from app.models.content import Post, PostAsset, Tag, PostTagRelation
+from app.models.content import Post, PostAsset, Tag, PostTagRelation, PostLike, PostFavorite
+from app.models.users import User, UserFollowRelation
 from app.schemas.posts import PostCreate, PostUpdate, PostResponse, PostListResponse
 from app.schemas.posts import PostAuthorResponse, PostAssetResponse, TagResponse
 from app.schemas.common import PaginatedResponse
-from app.utils.auth import get_current_user_id
+from app.services.post import PostService
+from app.utils.auth import get_current_user_id, get_optional_user_id
 
 
 def make_slug(text: str) -> str:
@@ -39,6 +40,10 @@ async def list_posts(
     tag: Optional[str] = None,
     author_id: Optional[UUID] = None,
     sort: str = Query(default="latest", pattern="^(latest|popular|trending)$"),
+    search: Optional[str] = None,
+    following: bool = Query(default=False),
+    db: AsyncSession = Depends(get_db),
+    current_clerk_id: Optional[str] = Depends(get_optional_user_id),
 ):
     """
     获取作品列表
@@ -47,11 +52,48 @@ async def list_posts(
     - tag: 筛选标签 slug
     - author_id: 筛选作者
     - sort: 排序方式 (latest / popular / trending)
+    - search: 搜索关键词 (匹配 title 和 excerpt)
+    - following: 是否只显示关注用户的作品
     """
-    # TODO: 实现作品列表查询
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Not implemented"
+    post_service = PostService(db)
+
+    # 获取当前用户 ID
+    current_user_id = None
+    following_user_ids = None
+
+    if current_clerk_id and following:
+        from app.repositories.user import UserRepository
+        user_repo = UserRepository(db)
+        current_user = await user_repo.get_by_clerk_id(current_clerk_id)
+        if current_user:
+            current_user_id = current_user.id
+            # 获取关注用户列表
+            result = await db.execute(
+                select(UserFollowRelation.followee_user_id).where(
+                    UserFollowRelation.follower_user_id == current_user.id
+                )
+            )
+            following_user_ids = [r[0] for r in result.all()]
+
+    posts, total, next_cursor = await post_service.list_posts(
+        status=post_status,
+        tag=tag,
+        author_id=author_id,
+        sort=sort,
+        limit=limit,
+        cursor=cursor,
+        search=search,
+        following_user_ids=following_user_ids,
+        current_user_id=current_user_id,
+    )
+
+    return PaginatedResponse(
+        items=posts,
+        total=total,
+        page=page,
+        limit=limit,
+        has_more=next_cursor is not None,
+        next_cursor=next_cursor,
     )
 
 
@@ -146,26 +188,32 @@ async def create_post(
 
 
 @router.get("/{post_id}", response_model=PostResponse)
-async def get_post(post_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_post(
+    post_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_clerk_id: Optional[str] = Depends(get_optional_user_id),
+):
     """获取作品详情"""
-    result = await db.execute(
-        select(Post)
-        .options(
-            selectinload(Post.cover_asset),
-            selectinload(Post.assets),
-            selectinload(Post.tags),
-        )
-        .where(Post.id == post_id)
-    )
-    db_post = result.scalar_one_or_none()
+    post_service = PostService(db)
 
-    if not db_post:
+    # 获取当前用户 ID
+    current_user_id = None
+    if current_clerk_id:
+        from app.repositories.user import UserRepository
+        user_repo = UserRepository(db)
+        current_user = await user_repo.get_by_clerk_id(current_clerk_id)
+        if current_user:
+            current_user_id = current_user.id
+
+    post = await post_service.get_post(post_id, current_user_id)
+
+    if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Post not found",
         )
 
-    return await _build_post_response(db, db_post)
+    return post
 
 
 @router.put("/{post_id}", response_model=PostResponse)
@@ -317,43 +365,143 @@ async def delete_post(
 
 
 @router.post("/{post_id}/like")
-async def like_post(post_id: UUID):
+async def like_post(
+    post_id: UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     """点赞作品"""
-    # TODO: 实现点赞功能
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Not implemented"
+    user_uuid = UUID(current_user_id)
+
+    # 验证作品存在
+    result = await db.execute(select(Post).where(Post.id == post_id))
+    post = result.scalar_one_or_none()
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Post not found",
+        )
+
+    # 检查是否已点赞
+    result = await db.execute(
+        select(PostLike).where(
+            PostLike.post_id == post_id,
+            PostLike.user_id == user_uuid,
+        )
     )
+    existing = result.scalar_one_or_none()
+    if existing:
+        return {"status": "already_liked"}
+
+    # 创建点赞
+    new_like = PostLike(post_id=post_id, user_id=user_uuid)
+    db.add(new_like)
+    post.like_count = (post.like_count or 0) + 1
+    await db.flush()
+    await db.commit()
+
+    return {"status": "liked"}
 
 
 @router.delete("/{post_id}/like", status_code=status.HTTP_204_NO_CONTENT)
-async def unlike_post(post_id: UUID):
+async def unlike_post(
+    post_id: UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     """取消点赞"""
-    # TODO: 实现取消点赞
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Not implemented"
+    user_uuid = UUID(current_user_id)
+
+    # 验证作品存在
+    result = await db.execute(select(Post).where(Post.id == post_id))
+    post = result.scalar_one_or_none()
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Post not found",
+        )
+
+    # 删除点赞
+    result = await db.execute(
+        delete(PostLike).where(
+            PostLike.post_id == post_id,
+            PostLike.user_id == user_uuid,
+        )
     )
+    if result.rowcount > 0:
+        post.like_count = max(0, (post.like_count or 0) - 1)
+    await db.flush()
+    await db.commit()
 
 
 @router.post("/{post_id}/favorite")
-async def favorite_post(post_id: UUID):
+async def favorite_post(
+    post_id: UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     """收藏作品"""
-    # TODO: 实现收藏功能
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Not implemented"
+    user_uuid = UUID(current_user_id)
+
+    # 验证作品存在
+    result = await db.execute(select(Post).where(Post.id == post_id))
+    post = result.scalar_one_or_none()
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Post not found",
+        )
+
+    # 检查是否已收藏
+    result = await db.execute(
+        select(PostFavorite).where(
+            PostFavorite.post_id == post_id,
+            PostFavorite.user_id == user_uuid,
+        )
     )
+    existing = result.scalar_one_or_none()
+    if existing:
+        return {"status": "already_favorited"}
+
+    # 创建收藏
+    new_favorite = PostFavorite(post_id=post_id, user_id=user_uuid)
+    db.add(new_favorite)
+    post.favorite_count = (post.favorite_count or 0) + 1
+    await db.flush()
+    await db.commit()
+
+    return {"status": "favorited"}
 
 
 @router.delete("/{post_id}/favorite", status_code=status.HTTP_204_NO_CONTENT)
-async def unfavorite_post(post_id: UUID):
+async def unfavorite_post(
+    post_id: UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     """取消收藏"""
-    # TODO: 实现取消收藏
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Not implemented"
+    user_uuid = UUID(current_user_id)
+
+    # 验证作品存在
+    result = await db.execute(select(Post).where(Post.id == post_id))
+    post = result.scalar_one_or_none()
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Post not found",
+        )
+
+    # 删除收藏
+    result = await db.execute(
+        delete(PostFavorite).where(
+            PostFavorite.post_id == post_id,
+            PostFavorite.user_id == user_uuid,
+        )
     )
+    if result.rowcount > 0:
+        post.favorite_count = max(0, (post.favorite_count or 0) - 1)
+    await db.flush()
+    await db.commit()
 
 
 async def _build_post_response(db: AsyncSession, db_post: Post) -> PostResponse:

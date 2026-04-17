@@ -8,6 +8,7 @@ from app.routers.comments import router as comments_router
 from app.routers.uploads import router as uploads_router
 from app.routers.ai import router as ai_router
 from app.routers.subscriptions import router as subscriptions_router
+from app.routers.tags import router as tags_router
 
 __all__ = [
     "auth_router",
@@ -19,4 +20,5 @@ __all__ = [
     "uploads_router",
     "ai_router",
     "subscriptions_router",
+    "tags_router",
 ]
