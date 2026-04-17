@@ -148,7 +148,7 @@ async def create_post(
     base_slug = make_slug(post.title)[:200]
     slug = f"{base_slug}-{uuid4().hex[:8]}"
 
-    # 创建 Post
+    # 创建 Post (status=processing，等待审核)
     now = datetime.now(timezone.utc)
     db_post = Post(
         author_user_id=user_uuid,
@@ -157,7 +157,7 @@ async def create_post(
         content=post.content,
         excerpt=post.excerpt or (post.content[:497] + "..." if post.content and len(post.content) > 500 else post.content),
         visibility=post.visibility,
-        status="published",
+        status="processing",
         cover_asset_id=post.cover_asset_id,
         ai_assisted=post.ai_assisted,
         published_at=now,
@@ -182,6 +182,10 @@ async def create_post(
 
     await db.commit()
     await db.refresh(db_post)
+
+    # 触发内容审核（异步处理，Phase 4 实现完整逻辑）
+    from app.services.moderation import process_post_moderation
+    await process_post_moderation(db_post.id)
 
     # 构建响应
     return await _build_post_response(db, db_post)
