@@ -16,7 +16,11 @@ class PostBase(BaseModel):
 
 
 class PostCreate(PostBase):
-    """创建作品请求"""
+    """
+    创建作品请求
+
+    Note: 新创建的作品 status 默认为 'processing'，经审核后变为 'published'
+    """
     cover_asset_id: Optional[UUID] = None
     asset_ids: List[UUID] = Field(default_factory=list)
     tag_ids: List[UUID] = Field(default_factory=list)
@@ -24,7 +28,11 @@ class PostCreate(PostBase):
 
 
 class PostUpdate(BaseModel):
-    """更新作品请求"""
+    """
+    更新作品请求
+
+    Note: status 变更需通过审核流程处理，暂不支持直接修改
+    """
     title: Optional[str] = Field(default=None, min_length=1, max_length=200)
     content: Optional[str] = None
     excerpt: Optional[str] = Field(default=None, max_length=500)
