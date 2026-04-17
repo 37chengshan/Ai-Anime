@@ -4,7 +4,7 @@ import React from "react";
 import { Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
 
 // Types - should be moved to @/types when available
@@ -25,22 +25,66 @@ interface Work {
   comments: number;
   isPremium?: boolean;
   createdAt: string;
+  is_liked?: boolean;
+  is_favorited?: boolean;
 }
 
 export function WorkCard({ work }: { work: Work }) {
-  const [isLiked, setIsLiked] = React.useState(false);
-  const [isSaved, setIsSaved] = React.useState(false);
+  const [isLiked, setIsLiked] = React.useState(work.is_liked || false);
+  const [isSaved, setIsSaved] = React.useState(work.is_favorited || false);
+  const [likeCount, setLikeCount] = React.useState(work.likes);
+  const [isLoading, setIsLoading] = React.useState(false);
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
-    setIsLiked(!isLiked);
-    toast.success(isLiked ? "Removed from your moodboard." : "Added to your moodboard.");
+    if (isLoading) return;
+
+    const wasLiked = isLiked;
+    // Optimistic update
+    setIsLiked(!wasLiked);
+    setLikeCount((prev) => (wasLiked ? prev - 1 : prev + 1));
+
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/v1/posts/${work.id}/like`, {
+        method: wasLiked ? "DELETE" : "POST",
+      });
+
+      if (!response.ok) throw new Error("Failed to update like");
+      toast.success(wasLiked ? "Removed from your moodboard." : "Added to your moodboard.");
+    } catch (error) {
+      // Revert on error
+      setIsLiked(wasLiked);
+      setLikeCount(work.likes);
+      toast.error("Failed to update like");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSave = (e: React.MouseEvent) => {
+  const handleSave = async (e: React.MouseEvent) => {
     e.preventDefault();
-    setIsSaved(!isSaved);
-    toast.success(isSaved ? "Unsaved." : "Archived to your library.");
+    if (isLoading) return;
+
+    const wasSaved = isSaved;
+    // Optimistic update
+    setIsSaved(!wasSaved);
+
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/v1/posts/${work.id}/favorite`, {
+        method: wasSaved ? "DELETE" : "POST",
+      });
+
+      if (!response.ok) throw new Error("Failed to update favorite");
+      toast.success(wasSaved ? "Unsaved." : "Archived to your library.");
+    } catch (error) {
+      // Revert on error
+      setIsSaved(wasSaved);
+      toast.error("Failed to update favorite");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -64,9 +108,14 @@ export function WorkCard({ work }: { work: Work }) {
           <div className="absolute top-4 right-4 flex flex-col gap-3">
             <button
               onClick={handleSave}
-              className="w-9 h-9 border border-[#fdfaf6]/50 bg-[#fdfaf6]/10 backdrop-blur-sm flex items-center justify-center text-[#fdfaf6] hover:bg-[#fdfaf6] hover:text-[#1a1918] transition-colors"
+              className={clsx(
+                "w-9 h-9 border transition-colors flex items-center justify-center",
+                isSaved
+                  ? "bg-[#c44d36] border-[#c44d36] text-[#fdfaf6]"
+                  : "border-[#fdfaf6]/50 bg-[#fdfaf6]/10 backdrop-blur-sm text-[#fdfaf6] hover:bg-[#fdfaf6] hover:text-[#1a1918]"
+              )}
             >
-              <Bookmark className={clsx("w-4 h-4", isSaved && "fill-[#c44d36] text-[#c44d36]")} />
+              <Bookmark className={clsx("w-4 h-4", isSaved && "fill-current")} />
             </button>
             <button
               onClick={(e) => {
@@ -128,7 +177,7 @@ export function WorkCard({ work }: { work: Work }) {
               )}
             >
               <Heart className={clsx("w-3.5 h-3.5", isLiked && "fill-current")} />
-              <span>{work.likes + (isLiked ? 1 : 0)}</span>
+              <span>{likeCount}</span>
             </button>
             <span className="flex items-center gap-1.5 opacity-60">
               <MessageCircle className="w-3.5 h-3.5" />
