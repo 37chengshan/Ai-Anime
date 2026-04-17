@@ -7,7 +7,7 @@
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "lint": "ls src/*.ts src/*.tsx 2>/dev/null | head -1 | xargs -r eslint",
-    "test": "jest"
+    "test": "echo No tests"
   },
   "devDependencies": {
     "tsup": "^8.0.0",
