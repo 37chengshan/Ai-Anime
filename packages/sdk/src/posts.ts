@@ -9,15 +9,39 @@ export class PostsApi {
 
   /**
    * 获取作品列表（Feed）
+   * @param params - 查询参数
+   * @param params.cursor - 分页游标
+   * @param params.limit - 每页数量
+   * @param params.status - 作品状态筛选
+   * @param params.tag - 标签 slug 筛选
+   * @param params.authorId - 作者 ID 筛选
+   * @param params.sort - 排序方式: latest/popular/trending
+   * @param params.search - 搜索关键词
+   * @param params.following - 是否只显示关注用户的作品
    */
   list(params?: {
     cursor?: string;
     limit?: number;
+    status?: string;
     tag?: string;
-    author?: string;
+    authorId?: string;
+    sort?: "latest" | "popular" | "trending";
+    search?: string;
+    following?: boolean;
   }): Promise<PaginatedResponse<Post>> {
+    // Map camelCase to snake_case for API
+    const apiParams: Record<string, string | number | boolean | undefined> = {};
+    if (params?.cursor) apiParams.cursor = params.cursor;
+    if (params?.limit) apiParams.limit = params.limit;
+    if (params?.status) apiParams.status = params.status;
+    if (params?.tag) apiParams.tag = params.tag;
+    if (params?.authorId) apiParams.author_id = params.authorId;
+    if (params?.sort) apiParams.sort = params.sort;
+    if (params?.search) apiParams.search = params.search;
+    if (params?.following !== undefined) apiParams.following = params.following;
+
     return this.client.get<PaginatedResponse<Post>>("/api/v1/posts", {
-      params,
+      params: apiParams,
     });
   }
 

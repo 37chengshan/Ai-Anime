@@ -82,8 +82,22 @@ class Comment(Base):
     content = Column(Text, nullable=False)
     status = Column(String(32), default="visible")  # visible / hidden / flagged
     ai_assisted = Column(Boolean, default=False)
+    like_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class CommentLike(Base):
+    __tablename__ = "comment_likes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    comment_id = Column(UUID(as_uuid=True), ForeignKey("comments.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        {"unique_constraint": ("comment_id", "user_id")},
+    )
 
 
 class PostLike(Base):

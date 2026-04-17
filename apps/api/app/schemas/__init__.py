@@ -5,6 +5,13 @@ from app.schemas.users import (
     UserResponse,
     UserProfileResponse,
     UserProfileUpdate,
+    UserSettingsResponse,
+    CurrentUserResponse,
+    UserPublicResponse,
+    CreatorPageResponse,
+    CreatorStatsResponse,
+    SubscriptionSummary,
+    AIQuotaSummary,
 )
 from app.schemas.posts import (
     PostCreate,
@@ -28,6 +35,13 @@ __all__ = [
     "UserResponse",
     "UserProfileResponse",
     "UserProfileUpdate",
+    "UserSettingsResponse",
+    "CurrentUserResponse",
+    "UserPublicResponse",
+    "CreatorPageResponse",
+    "CreatorStatsResponse",
+    "SubscriptionSummary",
+    "AIQuotaSummary",
     # Posts
     "PostCreate",
     "PostUpdate",

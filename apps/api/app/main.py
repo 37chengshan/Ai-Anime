@@ -39,20 +39,26 @@ app.add_middleware(
 from app.routers import (
     auth_router,
     users_router,
+    me_router,
+    creator_router,
     posts_router,
     comments_router,
     uploads_router,
     ai_router,
     subscriptions_router,
+    tags_router,
 )
 
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(me_router, prefix="/api/v1", tags=["me"])
 app.include_router(users_router, prefix="/api/v1/users", tags=["users"])
+app.include_router(creator_router, prefix="/api/v1/creators", tags=["creators"])
 app.include_router(posts_router, prefix="/api/v1/posts", tags=["posts"])
 app.include_router(comments_router, prefix="/api/v1", tags=["comments"])
 app.include_router(uploads_router, prefix="/api/v1/uploads", tags=["uploads"])
 app.include_router(ai_router, prefix="/api/v1/ai", tags=["ai"])
 app.include_router(subscriptions_router, prefix="/api/v1/subscriptions", tags=["subscriptions"])
+app.include_router(tags_router, prefix="/api/v1/tags", tags=["tags"])
 
 
 @app.get("/health")

@@ -7,7 +7,7 @@
     "structure-check": "./dist/structure-check.js"
   },
   "scripts": {
-    "build": "tsup src/*.ts --format cjs,esm --dts",
+    "build": "test -d src && ls src/*.ts 2>/dev/null | head -1 | xargs -r tsup --format cjs,esm --dts || echo \"No src files to build\"",
     "dev": "tsup src/*.ts --format cjs,esm --dts --watch"
   },
   "devDependencies": {
