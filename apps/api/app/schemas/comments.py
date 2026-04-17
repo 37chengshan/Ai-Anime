@@ -37,6 +37,8 @@ class CommentResponse(BaseModel):
     status: str
     ai_assisted: bool
     like_count: int = Field(default=0)
+    is_liked: bool = Field(default=False)
+    is_own: bool = Field(default=False)
     replies: List["CommentResponse"] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
