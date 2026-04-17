@@ -99,6 +99,8 @@ class PostListResponse(BaseModel):
     like_count: int
     favorite_count: int
     comment_count: int
+    is_liked: bool = False
+    is_favorited: bool = False
     published_at: Optional[datetime]
     created_at: datetime
 
