@@ -22,6 +22,17 @@ export class UsersApi {
   }
 
   /**
+   * 根据用户名(handle)获取创作者主页数据
+   */
+  getByHandle(handle: string): Promise<{
+    user: User & { follower_count: number; following_count: number; is_following: boolean };
+    stats: { follower_count: number; following_count: number };
+    posts: import("@ai-anime/contracts").Post[];
+  }> {
+    return this.client.get(`/api/v1/creators/${handle}`);
+  }
+
+  /**
    * 获取用户资料
    */
   getProfile(userId: string): Promise<UserProfile> {

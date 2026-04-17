@@ -73,3 +73,56 @@ class UserSettingsResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# --- 新增响应模型 ---
+
+
+class SubscriptionSummary(BaseModel):
+    """订阅状态摘要"""
+    plan: str = Field(default="free", description="当前套餐")
+    status: str = Field(default="inactive", description="订阅状态")
+    expires_at: Optional[datetime] = Field(default=None, description="到期时间")
+
+
+class AIQuotaSummary(BaseModel):
+    """AI 配额摘要"""
+    daily_limit: int = Field(default=10, description="每日限额")
+    daily_used: int = Field(default=0, description="已使用次数")
+    remaining: int = Field(default=10, description="剩余次数")
+
+
+class CurrentUserResponse(BaseModel):
+    """当前用户完整信息响应"""
+    user: UserResponse
+    profile: Optional[UserProfileResponse] = None
+    settings: Optional[UserSettingsResponse] = None
+    subscription: SubscriptionSummary = Field(default_factory=SubscriptionSummary)
+    ai_quota: AIQuotaSummary = Field(default_factory=AIQuotaSummary)
+
+
+class UserPublicResponse(BaseModel):
+    """用户公开信息响应"""
+    id: UUID
+    username: str
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    creator_badge: bool = False
+    follower_count: int = 0
+    following_count: int = 0
+    is_following: bool = False
+
+
+class CreatorStatsResponse(BaseModel):
+    """创作者统计"""
+    follower_count: int = 0
+    following_count: int = 0
+
+
+class CreatorPageResponse(BaseModel):
+    """创作者主页数据响应"""
+    user: UserPublicResponse
+    stats: CreatorStatsResponse = Field(default_factory=CreatorStatsResponse)
+    # posts 将在作品模块完成后填充
+    posts: list = Field(default_factory=list)

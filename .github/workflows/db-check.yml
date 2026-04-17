@@ -13,8 +13,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check migration order
         run: |
-          # Check migration files follow naming convention
-          migrations=$(ls apps/api/alembic/versions/*.py 2>/dev/null || true)
+          # Check migration files follow naming convention (exclude __init__.py)
+          migrations=$(ls apps/api/alembic/versions/*.py 2>/dev/null | grep -v __init__.py || true)
 
           for migration in $migrations; do
             filename=$(basename "$migration")

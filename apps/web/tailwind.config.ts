@@ -18,6 +18,18 @@ const config: Config = {
     },
     extend: {
       colors: {
+        /* Editorial / Magazine Style */
+        paper: "var(--color-paper)",
+        "paper-light": "var(--color-paper-light)",
+        ink: "var(--color-ink)",
+        "ink-light": "var(--color-ink-light)",
+        editorialAccent: "var(--color-accent)",
+        success: "var(--color-success)",
+        warning: "var(--color-warning)",
+        error: "var(--color-error)",
+        info: "var(--color-info)",
+
+        /* shadcn/ui compatibility */
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -52,10 +64,21 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground))",
         },
       },
+      fontFamily: {
+        sans: ["Inter", "system-ui", "sans-serif"],
+        serif: ["Playfair Display", "Noto Serif SC", "Georgia", "serif"],
+      },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        /* Editorial: No rounded corners */
+        lg: "0",
+        md: "0",
+        sm: "0",
+        none: "0",
+      },
+      boxShadow: {
+        sm: "0 1px 2px rgba(26, 25, 24, 0.05)",
+        md: "0 4px 6px rgba(26, 25, 24, 0.07)",
+        lg: "0 10px 15px rgba(26, 25, 24, 0.1)",
       },
       keyframes: {
         "accordion-down": {
