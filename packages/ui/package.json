@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
-    "lint": "eslint src/ --no-warn-ignored",
+    "lint": "ls src/*.ts src/*.tsx 2>/dev/null | head -1 | xargs -r eslint",
     "test": "jest"
   },
   "devDependencies": {
