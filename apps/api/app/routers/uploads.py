@@ -14,6 +14,7 @@ from uuid import UUID
 from app.core.config import settings
 from app.core.db import get_db
 from app.models.content import PostAsset
+from app.utils.auth import get_current_user_id
 
 router = APIRouter()
 
@@ -57,7 +58,7 @@ def get_r2_client():
 @router.post("/sign", response_model=UploadSignResponse)
 async def sign_upload(
     request: UploadSignRequest,
-    user_id: str,
+    user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """
