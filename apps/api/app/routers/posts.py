@@ -368,6 +368,22 @@ async def delete_post(
     await db.commit()
 
 
+@router.post("/{post_id}/flag", status_code=status.HTTP_202_ACCEPTED)
+async def flag_post(post_id: UUID, reason: str = Query(..., min_length=1, max_length=500)):
+    """标记内容为待审核状态"""
+    from app.services.moderation import flag_content
+
+    # TODO (Phase 1.2): 替换为真实数据库操作
+    # 1. 验证 post 存在
+    # 2. 调用 flag_content(post_id, reason)
+    # 3. 更新 post status 为 'flagged'
+
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Not implemented"
+    )
+
+
 @router.post("/{post_id}/like")
 async def like_post(
     post_id: UUID,
